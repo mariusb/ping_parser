@@ -1,0 +1,13 @@
+[package]
+name = "ping-parser"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "ping_parser"
+path = "src/main.rs"
+
+[dependencies]
+spreadsheet-ods = "0.25"
+chrono = "0.4"
+regex = "1"
