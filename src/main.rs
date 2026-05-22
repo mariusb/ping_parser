@@ -17,6 +17,8 @@ struct PingStats {
     transmitted: u32,
     /// Packets received
     received: u32,
+    /// Packets duplicated
+    _duplicates: u32,
     /// Packet loss percentage (e.g. 2.0)
     loss_pct: f64,
     /// Round-trip time min/avg/max/mdev in ms
@@ -77,7 +79,7 @@ fn parse_ping_file(path: &Path) -> Result<PingStats, String> {
     // Linux: "10 packets transmitted, 9 received, 10% packet loss"
     // MacOs: "500 packets transmitted, 495 packets received, 1.0% packet loss"
     let pkt_linux = Regex::new(
-        r"(\d+)\s+packets transmitted,\s*(\d+)\s+packets received,\s*([\d.]+)%\s+packet loss",
+        r"(\d+)\s+packets transmitted,\s*(\d+)\s+packets received,(?:\s+\+(\d+) duplicates,)? \s*([\d.]+)%\s+packet loss",
     )
     .unwrap();
     // Windows: "Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)"
@@ -86,20 +88,24 @@ fn parse_ping_file(path: &Path) -> Result<PingStats, String> {
     )
     .unwrap();
 
-    let (transmitted, received, loss_pct) = if let Some(cap) = pkt_linux.captures(&content) {
-        (
-            cap[1].parse::<u32>().unwrap_or(0),
-            cap[2].parse::<u32>().unwrap_or(0),
-            cap[3].parse::<f64>().unwrap_or(0.0),
-        )
-    } else if let Some(cap) = pkt_win.captures(&content) {
-        let tx: u32 = cap[1].parse().unwrap_or(0);
-        let rx: u32 = cap[2].parse().unwrap_or(0);
-        let loss: f64 = cap[3].parse().unwrap_or(0.0);
-        (tx, rx, loss)
-    } else {
-        return Err("Could not parse packet counts from ping statistics".into());
-    };
+    let (transmitted, received, _duplicates, loss_pct) =
+        if let Some(cap) = pkt_linux.captures(&content) {
+            (
+                cap[1].parse::<u32>().unwrap_or(0),
+                cap[2].parse::<u32>().unwrap_or(0),
+                cap.get(3)
+                    .map_or(0, |m| m.as_str().parse::<u32>().unwrap_or(0)),
+                cap[4].parse::<f64>().unwrap_or(0.0),
+            )
+        } else if let Some(cap) = pkt_win.captures(&content) {
+            let tx: u32 = cap[1].parse().unwrap_or(0);
+            let rx: u32 = cap[2].parse().unwrap_or(0);
+            let dup: u32 = 0;
+            let loss: f64 = cap[3].parse().unwrap_or(0.0);
+            (tx, rx, dup, loss)
+        } else {
+            return Err("Could not parse packet counts from ping statistics".into());
+        };
 
     // ── RTT ──────────────────────────────────────────────────────────────────
     // Linux: "rtt min/avg/max/mdev = 12.345/15.678/45.123/2.345 ms"
@@ -134,6 +140,7 @@ fn parse_ping_file(path: &Path) -> Result<PingStats, String> {
         host,
         transmitted,
         received,
+        _duplicates,
         loss_pct,
         rtt_min,
         rtt_avg,
