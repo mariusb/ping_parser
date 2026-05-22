@@ -214,11 +214,12 @@ fn append_to_ods(ods_path: &Path, stats: &PingStats) -> Result<(), String> {
         sheet.set_value(next_row, 1, stats.host.as_str());
         sheet.set_value(next_row, 2, stats.transmitted as i32);
         sheet.set_value(next_row, 3, stats.received as i32);
-        sheet.set_value(next_row, 4, stats.loss_pct);
-        sheet.set_value(next_row, 5, stats.rtt_min);
-        sheet.set_value(next_row, 6, stats.rtt_avg);
-        sheet.set_value(next_row, 7, stats.rtt_max);
-        sheet.set_value(next_row, 8, stats.rtt_mdev);
+        sheet.set_value(next_row, 4, stats._duplicates as i32);
+        sheet.set_value(next_row, 5, stats.loss_pct);
+        sheet.set_value(next_row, 6, stats.rtt_min);
+        sheet.set_value(next_row, 7, stats.rtt_avg);
+        sheet.set_value(next_row, 8, stats.rtt_max);
+        sheet.set_value(next_row, 9, stats.rtt_mdev);
     }
 
     write_ods(&mut wb, ods_path).map_err(|e| format!("Cannot write ODS: {e}"))?;
@@ -264,6 +265,7 @@ fn main() {
     println!("  Host:        {}", stats.host);
     println!("  Transmitted: {}", stats.transmitted);
     println!("  Received:    {}", stats.received);
+    println!("  Duplicates:  {}", stats._duplicates);
     println!("  Loss:        {}%", stats.loss_pct);
     println!(
         "  RTT:         min={} avg={} max={} mdev={} ms",
